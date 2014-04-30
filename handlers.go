@@ -36,10 +36,11 @@ type Click struct {
 }
 
 type ShortenedTemplateData struct {
-	Host   string
-	LinkId string
-	URL    string
-	Clicks []Click
+	Host    string
+	LinkId  string
+	URL     string
+	Created string
+	Clicks  []Click
 }
 
 func shortenHandler(w http.ResponseWriter, req *http.Request) {
@@ -85,8 +86,8 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var url, creator_ip, random string
-	if err := db.QueryRow("SELECT url, host(creator_ip), random FROM links WHERE id = $1::integer", id).Scan(&url, &creator_ip, &random); err != nil {
+	var url, creator_ip, created, random string
+	if err := db.QueryRow("SELECT url, host(creator_ip), created, random FROM links WHERE id = $1::integer", id).Scan(&url, &creator_ip, &created, &random); err != nil {
 		http.NotFound(w, req)
 		return
 	}
@@ -101,7 +102,24 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := shortenedTemplate.Execute(w, ShortenedTemplateData{req.Host, linkId, url, []Click{}}); err != nil {
+	clicks := []Click{}
+
+	rows, err := db.Query("SELECT inserted, user_agent FROM clicks WHERE link_id = $1 ORDER BY id DESC", id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for rows.Next() {
+		click := Click{}
+		if err := rows.Scan(&click.Inserted, &click.UserAgent); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		clicks = append(clicks, click)
+	}
+
+	if err := shortenedTemplate.Execute(w, ShortenedTemplateData{req.Host, linkId, url, created, clicks}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -122,7 +140,19 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 	defer conn.Close()
 	if res, _ := conn.Do("GET", linkId); res != nil {
 		http.Redirect(w, req, string(res.([]uint8)), http.StatusMovedPermanently)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+
 		conn.Do("EXPIRE", linkId, 10)
+
+		ip, _, err := net.SplitHostPort(req.RemoteAddr)
+		if err != nil {
+			return
+		}
+
+		db.Exec("INSERT INTO clicks (inserted, ip, user_agent, link_id) VALUES ($1, $2, $3, $4::integer)",
+			time.Now().Unix(), ip, req.UserAgent(), decodeInt(linkId[:len(linkId)-2]))
 		return
 	}
 
@@ -144,7 +174,19 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	http.Redirect(w, req, url, http.StatusMovedPermanently)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+
 	if _, err := conn.Do("SET", linkId, url); err != nil {
 		conn.Do("EXPIRE", linkId, 10)
 	}
+
+	ip, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		return
+	}
+
+	db.Exec("INSERT INTO clicks (inserted, ip, user_agent, link_id) VALUES ($1, $2, $3, $4::integer)",
+		time.Now().Unix(), ip, req.UserAgent(), id)
 }

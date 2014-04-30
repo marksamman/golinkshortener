@@ -41,6 +41,7 @@ func main() {
 	if db, err = sql.Open("postgres", POSTGRES_CONNECTION_PARAMS); err != nil {
 		log.Fatal(err)
 	}
+	db.SetMaxIdleConns(MAX_IDLE_DB_CONNECTIONS)
 	defer db.Close()
 
 	// Redis pool
