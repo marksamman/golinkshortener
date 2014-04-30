@@ -30,7 +30,10 @@ import (
 	"time"
 )
 
-type Click struct{}
+type Click struct {
+	Inserted  string
+	UserAgent string
+}
 
 type ShortenedTemplateData struct {
 	Host   string
@@ -106,7 +109,7 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 func rootHandler(w http.ResponseWriter, req *http.Request) {
 	linkId := req.URL.Path[1:]
 	if len(linkId) == 0 {
-		http.ServeFile(w, req, "public/index.html")
+		http.ServeFile(w, req, "static/index.html")
 		return
 	}
 
