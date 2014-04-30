@@ -41,13 +41,13 @@ type ShortenedTemplateData struct {
 
 func shortenHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
-		http.Error(w, "method must be POST", 500)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	ip, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		http.Error(w, "failed to split host/port", 500)
+		http.Error(w, "failed to split host/port", http.StatusInternalServerError)
 		return
 	}
 
@@ -56,11 +56,11 @@ func shortenHandler(w http.ResponseWriter, req *http.Request) {
 
 	var linkId int
 	if err := db.QueryRow("INSERT INTO links (url, creator_ip, created, random) VALUES ($1, $2, $3, $4) RETURNING id", req.FormValue("url"), ip, time.Now().Unix(), randomString).Scan(&linkId); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, req, fmt.Sprintf("/shortened/%s%s", encodeInt(linkId), randomString), 302)
+	http.Redirect(w, req, fmt.Sprintf("/shortened/%s%s", encodeInt(linkId), randomString), http.StatusFound)
 }
 
 func shortenedHandler(w http.ResponseWriter, req *http.Request) {
@@ -72,7 +72,7 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 
 	ip, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		http.Error(w, "failed to split host/port", 500)
+		http.Error(w, "failed to split host/port", http.StatusInternalServerError)
 		return
 	}
 
@@ -94,7 +94,7 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if creator_ip != ip {
-		http.Error(w, "forbidden", 403)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -118,7 +118,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 	conn := redisPool.Get()
 	defer conn.Close()
 	if res, _ := conn.Do("GET", linkId); res != nil {
-		http.Redirect(w, req, string(res.([]uint8)), 301)
+		http.Redirect(w, req, string(res.([]uint8)), http.StatusMovedPermanently)
 		conn.Do("EXPIRE", linkId, 10)
 		return
 	}
@@ -140,7 +140,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(w, req, url, 301)
+	http.Redirect(w, req, url, http.StatusMovedPermanently)
 	if _, err := conn.Do("SET", linkId, url); err != nil {
 		conn.Do("EXPIRE", linkId, 10)
 	}
