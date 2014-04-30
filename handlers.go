@@ -102,7 +102,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 	conn := redisPool.Get()
 	defer conn.Close()
 	if res, _ := conn.Do("GET", linkId); res != nil {
-		http.Redirect(w, req, string(res.([]uint8)), 302) // Use 301 in production
+		http.Redirect(w, req, string(res.([]uint8)), 301)
 		conn.Do("EXPIRE", linkId, 10)
 		return
 	}
@@ -124,7 +124,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	http.Redirect(w, req, url, 302) // Use 301 in production
+	http.Redirect(w, req, url, 301)
 	if _, err := conn.Do("SET", linkId, url); err != nil {
 		conn.Do("EXPIRE", linkId, 10)
 	}
