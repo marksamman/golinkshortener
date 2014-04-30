@@ -30,6 +30,15 @@ import (
 	"time"
 )
 
+type Click struct{}
+
+type ShortenedTemplateData struct {
+	Host   string
+	LinkId string
+	URL    string
+	Clicks []Click
+}
+
 func shortenHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(w, "method must be POST", 500)
@@ -47,7 +56,7 @@ func shortenHandler(w http.ResponseWriter, req *http.Request) {
 
 	var linkId int
 	if err := db.QueryRow("INSERT INTO links (url, creator_ip, created, random) VALUES ($1, $2, $3, $4) RETURNING id", req.FormValue("url"), ip, time.Now().Unix(), randomString).Scan(&linkId); err != nil {
-		http.Error(w, fmt.Sprintf("%s", err), 500)
+		http.Error(w, err.Error(), 500)
 		return
 	}
 
@@ -73,8 +82,8 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var creator_ip, random string
-	if err := db.QueryRow("SELECT host(creator_ip), random FROM links WHERE id = $1::integer", id).Scan(&creator_ip, &random); err != nil {
+	var url, creator_ip, random string
+	if err := db.QueryRow("SELECT url, host(creator_ip), random FROM links WHERE id = $1::integer", id).Scan(&url, &creator_ip, &random); err != nil {
 		http.NotFound(w, req)
 		return
 	}
@@ -89,7 +98,9 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "Short URL: http://%s/%s", req.Host, linkId)
+	if err := shortenedTemplate.Execute(w, ShortenedTemplateData{req.Host, linkId, url, []Click{}}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func rootHandler(w http.ResponseWriter, req *http.Request) {

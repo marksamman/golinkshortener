@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    </head>
+    <body>
+        <div class="row">
+            <div class="col-xs-10 col-xs-offset-1">
+                <h2>Link Shortener</h2>
+                {{if not .Clicks}}
+                <div class="alert alert-success">
+                    <strong>Success!</strong> You have generated a short link.
+                </div>
+                {{end}}
+                <h3>Details</h3>
+                <div class="row">
+                    <div class="col-xs-4"><strong>Short URL:</strong><br>http://{{.Host}}/{{.LinkId}}</div>
+                    <div class="col-xs-4"><strong>Redirects to:</strong><br>{{.URL}}</div>
+                    <div class="col-xs-4"><strong>Created:</strong><br>FIXME GMT</div>
+                </div>
+                <h3>Clicks</h3>
+                <table class="table table-striped table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User agent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clicks">
+                        {{range .Clicks}}
+                        <tr><td>{{.Inserted}} GMT</td><td>{{.UserAgent}}</td></tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <script>
+            function initWebSocket() {
+                var clicks = document.getElementById("clicks")
+                var websocket = new WebSocket("ws://localhost:5001/")
+                websocket.onopen = function(evt) {
+                    console.log("connected")
+                    websocket.send({{.LinkId}})
+                }
+                websocket.onclose = function(evt) {
+                    console.log("disconnected")
+                }
+                websocket.onmessage = function(evt) {
+                    var res = JSON.parse(evt.data);
+                    var row = clicks.insertRow(0);
+                    var inserted = row.insertCell(0);
+                    inserted.innerHTML = res.time;
+                    var userAgent = row.insertCell(1);
+                    userAgent.innerHTML = res.ua;
+                }
+                websocket.onerror = function(evt) {
+                    console.log("error:", evt.data)
+                }
+            }
+            window.addEventListener("load", initWebSocket, false)
+        </script>
+    </body>
+</html>
