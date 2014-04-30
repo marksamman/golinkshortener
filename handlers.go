@@ -31,6 +31,11 @@ import (
 )
 
 func shortenHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(w, "method must be POST", 500)
+		return
+	}
+
 	ip, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
 		http.Error(w, "failed to split host/port", 500)
