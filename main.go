@@ -46,7 +46,7 @@ func main() {
 	// Redis pool
 	redisPool = redis.NewPool(func() (redis.Conn, error) {
 		return redis.Dial("tcp", REDIS_HOST)
-	}, 3)
+	}, MAX_IDLE_REDIS_CONNECTIONS)
 	defer redisPool.Close()
 
 	http.HandleFunc("/shorten", shortenHandler)
