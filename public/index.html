@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    </head>
+    <body>
+        <div class="row">
+            <div class="col-xs-10 col-xs-offset-1">
+                <h2>Link Shortener</h2>
+                <form role="form" class="form-horizontal" method="post" action="/shorten">
+                    <div class="form-group">
+                        <label for="url" class="col-xs-2 control-label">URL:</label>
+                        <div class="col-xs-10">
+                            <input type="url" class="form-control" id="url" name="url" placeholder="http://example.com/?very_long_url_that_needs_to_be_shortened">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary col-xs-offset-2 col-xs-10">Shorten my URL</button>
+                </form>
+            </div>
+        </div>
+    </body>
+</html>
