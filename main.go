@@ -35,9 +35,6 @@ import (
 var db *sql.DB
 var redisPool *redis.Pool
 
-var decodeArray [123]int
-var urlSafe [64]byte
-
 func main() {
 	// Postgres pool
 	var err error
@@ -51,18 +48,6 @@ func main() {
 		return redis.Dial("tcp", REDIS_HOST)
 	}, 3)
 	defer redisPool.Close()
-
-	decodeArray = [...]int{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 35, -1, -1, 13, 49, 0, 56, 3, 62, 26, 63, 59, 11, -1, -1, -1, -1, -1, -1, -1, 43, 37, 54, 2, 32, 39, 33, 16, 4, 30, 40, 57, 31, 51, 15, 61, 20, 55, 29, 36, 45, 38, 17, 7, 28, 24, -1, -1, -1, -1, 44, -1, 6, 27, 25, 50, 10, 1, 9, 19, 12, 47, 22, 34, 52, 42, 5, 8, 58, 21, 18, 46, 53, 41, 48, 14, 23, 60}
-	urlSafe = [...]byte{
-		'2', 'f', 'D', '4', 'I', 'o', 'a', 'X',
-		'p', 'g', 'e', '9', 'i', '0', 'x', 'O',
-		'H', 'W', 's', 'h', 'Q', 'r', 'k', 'y',
-		'Z', 'c', '6', 'b', 'Y', 'S', 'J', 'M',
-		'E', 'G', 'l', '-', 'T', 'B', 'V', 'F',
-		'K', 'v', 'n', 'A', '_', 'U', 't', 'j',
-		'w', '1', 'd', 'N', 'm', 'u', 'C', 'R',
-		'3', 'L', 'q', '8', 'z', 'P', '5', '7',
-	}
 
 	http.HandleFunc("/shorten", shortenHandler)
 	http.HandleFunc("/shortened/", shortenedHandler)
