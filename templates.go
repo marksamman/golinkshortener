@@ -28,6 +28,21 @@ import (
 	"log"
 )
 
+var shortenedTemplate = templateLoader("templates/shortened.tmpl")
+
+type Click struct {
+	Inserted  string
+	UserAgent string
+}
+
+type ShortenedTemplateData struct {
+	Host    string
+	LinkId  string
+	URL     string
+	Created string
+	Clicks  []Click
+}
+
 func templateLoader(filename string) *template.Template {
 	var fileContent, err = ioutil.ReadFile(filename)
 	if err != nil {
@@ -35,5 +50,3 @@ func templateLoader(filename string) *template.Template {
 	}
 	return template.Must(template.New(filename).Parse(string(fileContent)))
 }
-
-var shortenedTemplate = templateLoader("templates/shortened.tmpl")

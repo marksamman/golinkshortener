@@ -30,17 +30,14 @@ import (
 	"time"
 )
 
-type Click struct {
-	Inserted  string
-	UserAgent string
-}
+func registerClick(id int, req *http.Request) {
+	ip, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		return
+	}
 
-type ShortenedTemplateData struct {
-	Host    string
-	LinkId  string
-	URL     string
-	Created string
-	Clicks  []Click
+	db.Exec("INSERT INTO clicks (inserted, ip, user_agent, link_id) VALUES ($1, $2, $3, $4)",
+		time.Now().Unix(), ip, req.UserAgent(), id)
 }
 
 func shortenHandler(w http.ResponseWriter, req *http.Request) {
@@ -86,11 +83,14 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var url, creator_ip, created, random string
-	if err := db.QueryRow("SELECT url, host(creator_ip), created, random FROM links WHERE id = $1::integer", id).Scan(&url, &creator_ip, &created, &random); err != nil {
+	var url, creator_ip, random string
+	var createdInt int64
+	if err := db.QueryRow("SELECT url, host(creator_ip), created, random FROM links WHERE id = $1", id).Scan(&url, &creator_ip, &createdInt, &random); err != nil {
 		http.NotFound(w, req)
 		return
 	}
+
+	created := time.Unix(createdInt, 0).String()
 
 	if random != linkId[len(linkId)-2:] {
 		http.NotFound(w, req)
@@ -102,20 +102,23 @@ func shortenedHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	clicks := []Click{}
-
 	rows, err := db.Query("SELECT inserted, user_agent FROM clicks WHERE link_id = $1 ORDER BY id DESC", id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	clicks := []Click{}
 	for rows.Next() {
 		click := Click{}
-		if err := rows.Scan(&click.Inserted, &click.UserAgent); err != nil {
+
+		var inserted int64
+		if err := rows.Scan(&inserted, &click.UserAgent); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		click.Inserted = time.Unix(inserted, 0).String()
 		clicks = append(clicks, click)
 	}
 
@@ -144,15 +147,8 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 			f.Flush()
 		}
 
-		conn.Do("EXPIRE", linkId, 10)
-
-		ip, _, err := net.SplitHostPort(req.RemoteAddr)
-		if err != nil {
-			return
-		}
-
-		db.Exec("INSERT INTO clicks (inserted, ip, user_agent, link_id) VALUES ($1, $2, $3, $4::integer)",
-			time.Now().Unix(), ip, req.UserAgent(), decodeInt(linkId[:len(linkId)-2]))
+		conn.Do("EXPIRE", linkId, REDIS_CACHE_TTL)
+		registerClick(decodeInt(linkId[:len(linkId)-2]), req)
 		return
 	}
 
@@ -163,7 +159,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var url, random string
-	if err := db.QueryRow("SELECT url, random FROM links WHERE id = $1::integer", id).Scan(&url, &random); err != nil {
+	if err := db.QueryRow("SELECT url, random FROM links WHERE id = $1", id).Scan(&url, &random); err != nil {
 		http.NotFound(w, req)
 		return
 	}
@@ -179,14 +175,7 @@ func rootHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if _, err := conn.Do("SET", linkId, url); err != nil {
-		conn.Do("EXPIRE", linkId, 10)
+		conn.Do("EXPIRE", linkId, REDIS_CACHE_TTL)
 	}
-
-	ip, _, err := net.SplitHostPort(req.RemoteAddr)
-	if err != nil {
-		return
-	}
-
-	db.Exec("INSERT INTO clicks (inserted, ip, user_agent, link_id) VALUES ($1, $2, $3, $4::integer)",
-		time.Now().Unix(), ip, req.UserAgent(), id)
+	registerClick(id, req)
 }

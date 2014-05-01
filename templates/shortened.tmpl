@@ -16,7 +16,7 @@
                 <div class="row">
                     <div class="col-xs-4"><strong>Short URL:</strong><br>http://{{.Host}}/{{.LinkId}}</div>
                     <div class="col-xs-4"><strong>Redirects to:</strong><br>{{.URL}}</div>
-                    <div class="col-xs-4"><strong>Created:</strong><br>{{.Created}} GMT</div>
+                    <div class="col-xs-4"><strong>Created:</strong><br>{{.Created}}</div>
                 </div>
                 <h3>Clicks</h3>
                 <table class="table table-striped table-condensed">
@@ -28,7 +28,7 @@
                     </thead>
                     <tbody id="clicks">
                         {{range .Clicks}}
-                        <tr><td>{{.Inserted}} GMT</td><td>{{.UserAgent}}</td></tr>
+                        <tr><td>{{.Inserted}}</td><td>{{.UserAgent}}</td></tr>
                         {{end}}
                     </tbody>
                 </table>
